@@ -1,0 +1,16 @@
+{
+  "width": 12,
+  "height": 8,
+  "cell_size_meters": 0.5,
+  "racks": [
+    {"id": "RACK-A23", "x": 1, "y": 1},
+    {"id": "RACK-D17", "x": 10, "y": 6}
+  ],
+  "blocked_cells": [
+    [4, 1],
+    [4, 2],
+    [4, 3],
+    [5, 3],
+    [6, 3]
+  ]
+}
