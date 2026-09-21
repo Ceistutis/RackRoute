@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111e32">
+  <title>RackRoute — Cable route planner</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">R↗</span><span>RackRoute<small>INFRASTRUCTURE / ROUTE PLANNER</small></span></div>
+    <span id="api-status" class="api-status" role="status">API · CONNECTING</span>
+  </header>
+  <main>
+    <div class="page-heading"><div><p class="eyebrow">NETWORK PLANNING</p><h1>A clear path between racks.</h1><p class="subheading">Inspect your layout. Plan a route. Know your cable length.</p></div><span class="version">MVP / 01</span></div>
+    <section class="panel controls" aria-labelledby="controls-title">
+      <div class="section-heading"><h2 id="controls-title"><span class="section-number">01</span> Route configuration</h2><button id="reload" class="text-button" type="button">Reload layout ↻</button></div>
+      <form id="route-form">
+        <fieldset id="route-controls" disabled>
+          <label>Source rack<select id="source" required aria-label="Source rack"></select></label>
+          <span class="direction" aria-hidden="true">→</span>
+          <label>Destination rack<select id="destination" required aria-label="Destination rack"></select></label>
+          <label>Safety margin<span class="input-unit"><input id="margin" type="number" value="10" min="0" step="any" required><span>%</span></span></label>
+          <button id="calculate" class="primary-button" type="submit">Calculate Route <span aria-hidden="true">↗</span></button>
+        </fieldset>
+      </form>
+      <p id="message" role="status" aria-live="polite">Loading layout and racks…</p>
+    </section>
+
+    <div class="workspace">
+      <section class="panel layout-panel" aria-labelledby="layout-title">
+        <div class="section-heading"><h2 id="layout-title"><span class="section-number">02</span> Data center layout</h2><span id="layout-meta" class="mono">—</span></div>
+        <fieldset id="editor" class="editor" disabled>
+          <label>Ferramenta<select id="tool">
+            <option value="inspect">Inspecionar</option><option value="blocked">Bloquear / desbloquear</option>
+            <option value="rack">Adicionar rack</option><option value="erase">Remover rack / bloqueio</option>
+            <option value="source">Definir origem</option><option value="destination">Definir destino</option>
+          </select></label>
+          <label>ID do novo rack<input id="rack-id" placeholder="Ex.: RACK-C01" maxlength="80"></label>
+          <p id="editor-help">Escolha uma ferramenta e clique em uma célula. Edições ficam na memória do servidor; reiniciar restaura o JSON. Alterar o mapa limpa as rotas.</p>
+        </fieldset>
+        <div class="map-scroll"><div id="grid" class="grid" role="group" aria-label="Data center layout loading"></div></div>
+        <div class="map-footer"><span id="map-caption">Coordinates begin at (0, 0)</span><span class="mono">ORTHOGONAL / 2D</span></div>
+        <ul class="legend" aria-label="Map legend">
+          <li><i class="free"></i>Free</li><li><i class="blocked"></i>Blocked</li><li><i class="rack"></i>Rack</li>
+          <li><i class="source"></i>Source</li><li><i class="destination"></i>Destination</li><li><i class="route"></i>Route</li>
+        </ul>
+        <div class="saved-routes"><div class="section-heading"><h2>Rotas adicionais</h2><button id="clear-routes" class="text-button" type="button">Limpar rotas</button></div><p>Selecione origem e destino e calcule para adicionar uma rota. Clique na lista para ver suas métricas.</p><ul id="route-list"></ul></div>
+      </section>
+      <section class="panel summary" aria-labelledby="summary-title">
+        <div class="section-heading"><h2 id="summary-title"><span class="section-number">03</span> Route summary</h2></div>
+        <div class="summary-body" aria-live="polite">
+          <div class="route-endpoints"><div><span class="eyebrow">FROM</span><strong id="result-source">—</strong></div><span aria-hidden="true">↓</span><div><span class="eyebrow">TO</span><strong id="result-destination">—</strong></div></div>
+          <div class="primary-metric"><span>Route distance</span><strong id="result-distance">—</strong></div>
+          <div class="cable-metric"><span>Recommended cable</span><strong id="result-cable">—</strong><small>Includes the selected safety margin</small></div>
+          <dl class="metrics"><div><dt>Steps</dt><dd id="result-steps">—</dd></div><div><dt>Nodes explored</dt><dd id="result-explored">—</dd></div><div><dt>Algorithm</dt><dd id="result-algorithm">—</dd></div><div><dt>Heuristic</dt><dd id="result-heuristic">—</dd></div></dl>
+          <p id="summary-note" class="summary-note">Calculate a route to see its metrics.</p>
+        </div>
+      </section>
+    </div>
+    <footer>RackRoute <span>Physical cable routing · Simulated data center</span><a href="/docs">API documentation ↗</a></footer>
+    <noscript><p class="error">Enable JavaScript to load the layout and calculate routes.</p></noscript>
+  </main>
+</body>
+</html>

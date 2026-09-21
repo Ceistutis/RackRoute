@@ -5,10 +5,11 @@ racks de um Data Center simulado.
 
 ## Estado atual
 
-Aplicação FastAPI com `GET /health` e núcleo reutilizável de pathfinding com A*,
+Aplicação FastAPI com endpoints de consulta e roteamento e núcleo reutilizável com A*,
 Manhattan e testes. O domínio inclui Position, Rack, DataCenterLayout e CableRoute.
 CableRouteService calcula rotas e comprimentos físicos. O carregador JSON valida
-arquivos e constrói layouts de domínio. O frontend ainda não foi implementado.
+arquivos e constrói layouts de domínio. Um painel HTML/CSS/JavaScript permite
+selecionar racks, visualizar o grid e consultar rotas pela API.
 
 ## Requisitos
 
@@ -55,7 +56,7 @@ src/
     services/                 # Casos de uso, incluindo CableRouteService
     infrastructure/           # Carregamento de layouts JSON
   api/                        # FastAPI, contratos HTTP e montagem da aplicação
-frontend/                     # HTML, CSS e JavaScript puro (a implementar)
+frontend/                     # Painel HTML, CSS e JavaScript puro
 data/                         # Layout JSON de exemplo
 tests/
   pathfinding/
@@ -90,7 +91,8 @@ não ordenáveis, entradas antigas da fila, reabertura de nós e custos inválid
 
 A suíte também valida os modelos de domínio, os movimentos permitidos no layout,
 as invariantes dos dados e a integração com o A* existente. A verificação manual
-do endpoint está descrita acima; testes de API serão adicionados em outra etapa.
+do endpoint está descrita acima. Testes de integração com FastAPI TestClient
+validam os endpoints, schemas, erros HTTP e carregamento na inicialização.
 
 ## Domínio de Data Center
 
@@ -197,11 +199,87 @@ não importam JSON ou Pydantic.
 O exemplo fornecido produz 14 passos, 7 metros e recomendação de 7,7 metros com a
 margem padrão de 10%. Os testes validam esse fluxo e arquivos malformados.
 
+## API REST
+
+A aplicação carrega `data/example_datacenter.json` uma vez na inicialização,
+usando um caminho relativo ao repositório, independente do diretório do terminal.
+Arquivo inválido interrompe a inicialização. `create_app(layout_path)` permite
+selecionar outro arquivo ao montar a aplicação, inclusive nos testes.
+
+| Método | Endpoint | Resultado |
+| --- | --- | --- |
+| GET | `/health` | `{"status":"ok"}` |
+| POST | `/api/v1/routes` | Caminho genérico, custo total e nós explorados |
+| POST | `/api/v1/cable-routes` | Caminho entre racks e métricas físicas |
+| GET | `/api/v1/racks` | Lista de objetos com `id`, `x` e `y` |
+| GET | `/api/v1/layout` | Dimensões, tamanho da célula, racks e `blocked_cells` |
+
+Requisição para `/api/v1/routes` (coordenadas `[x, y]`):
+
+```json
+{
+  "width": 3,
+  "height": 3,
+  "start": [0, 0],
+  "goal": [2, 0],
+  "blocked_cells": [[1, 0]]
+}
+```
+
+`blocked_cells` é opcional e usa lista vazia por padrão. A resposta contém
+`route`, `total_cost`, `explored_nodes`, `algorithm` e `heuristic`. O grid é
+independente do Data Center carregado e usa movimentos ortogonais de custo 1.
+
+Requisição para `/api/v1/cable-routes`:
+
+```json
+{
+  "source_rack": "RACK-A23",
+  "destination_rack": "RACK-D17",
+  "safety_margin": 0.10
+}
+```
+
+`safety_margin` é opcional e usa 10% por padrão. A resposta contém `source`,
+`destination`, `route` (caminho completo), `steps`, `distance_meters`,
+`recommended_cable_length_meters`, `explored_nodes`, `algorithm: "A*"` e
+`heuristic: "Manhattan"`. As métricas são calculadas a partir do caminho real.
+
+Erros são JSON com campo `detail`:
+
+- **400:** margem negativa, traduzida de `InvalidSafetyMarginError`.
+- **404:** rack inexistente, traduzido de `RackNotFoundError`.
+- **422:** ausência de rota, JSON malformado ou falha de schema (campos ausentes,
+  tipos incorretos, números não finitos, posições inválidas ou bloqueadas).
+- **200:** origem igual ao destino, com caminho de uma posição e custo zero.
+
+Pydantic valida a fronteira HTTP; schemas de resposta convertem explicitamente
+os objetos internos para JSON. A tradução HTTP fica em `api`, sem alterar o
+domínio ou o A*. A documentação interativa está em `/docs`.
+
+## Frontend
+
+Com o Uvicorn em execução, abra http://127.0.0.1:8000/ . O próprio FastAPI serve
+a página inicial e os arquivos CSS/JS em `/static`; não há etapa de build ou npm.
+
+O painel carrega `/api/v1/layout` e `/api/v1/racks`. Selecione origem, destino e
+margem percentual (10 significa 10%), depois clique em **Calculate Route**.
+O navegador converte a porcentagem para a fração esperada pela API e envia
+`POST /api/v1/cable-routes`. Apenas o backend calcula a rota e seus comprimentos.
+
+O CSS Grid diferencia células livres, bloqueios, racks, origem, destino e rota.
+`S` e `G` marcam os extremos; `S/G` indica uma posição compartilhada. O resumo
+mostra origem, destino, passos, distância, cabo recomendado, nós explorados,
+algoritmo e heurística. Comprimentos são apresentados com até duas casas decimais.
+
+Alterar parâmetros limpa o resultado anterior. O formulário é desativado durante
+requisições, erros são exibidos na página e **Reload layout** permite repetir o
+carregamento. Como o backend mantém o layout em memória, alterações no JSON
+exigem reiniciar o servidor. O indicador API reflete a última requisição, sem
+monitoramento periódico. Em telas estreitas, os painéis ficam em uma coluna e
+grids maiores podem ser rolados horizontalmente.
+
 ## Limites do MVP
 
 Layouts inicialmente em JSON. Sem banco de dados, autenticação, microserviços,
 Docker, bibliotecas externas de grafos/pathfinding ou framework de frontend.
-
-## Próximas etapas
-
-- Expor as rotas HTTP e construir a interface visual mínima.
